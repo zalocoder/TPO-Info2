@@ -1,0 +1,14 @@
+.metadata/
+**/Debug/
+**/Release/
+*.o
+*.d
+*.axf
+*.map
+*.bin
+*.hex
+.DS_Store
+Thumbs.db
+.mcuxpressoide_packages_support/
+EOF.  
+ 
