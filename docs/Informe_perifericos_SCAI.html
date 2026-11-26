@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<title>SCAI - Informe de periféricos</title>
+<title>SCAI - Resumen de avance</title>
 <style>
   @page { size: A4; margin: 18mm 16mm 18mm 16mm; }
   :root { --tinta:#1d2430; --gris:#5b6472; --borde:#cfd5dd; --suave:#f3f5f8; --acento:#1f5fa8; --ok:#1e7b46; --warn:#a86a00; --mal:#b3261e; }
@@ -35,12 +35,16 @@
 <body>
 
 <h1>SCAI - Sistema de Control de Acceso Inteligente</h1>
-<div class="sub">Informe de implementación de periféricos · TPO Informática II (UTN, 2026) · LPC845-BRK + Infotrónic · 26/11/2026</div>
+<div class="sub">Resumen de avance: configuración de periféricos · TPO Informática II (UTN, 2026) · LPC845-BRK + Infotrónic · 26/11/2026</div>
+
+<p>Este documento resume lo que estuvimos trabajando en el firmware del SCAI: cómo quedó organizado el proyecto, cómo configuramos
+cada periférico, qué hay que mirar cuando lo probemos en la placa y qué nos falta. También incluye la propuesta de máquina de
+estados de la puerta, que todavía no está en el código.</p>
 
 <div class="caja">
-<b>Estado en una línea:</b> todos los periféricos del núcleo están <b>configurados y compilan</b> (45 KB de 64 KB de flash),
-pero <b>nada se probó en hardware</b> porque faltan componentes. No hay máquina de estados de la puerta: el <code>main</code>
-inicializa la placa y corre una <b>prueba manual de periféricos</b> que se puede quitar.
+<b>Dónde estamos:</b> configuramos todos los periféricos del núcleo y el proyecto <b>compila</b> (45 KB de 64 KB de flash),
+pero <b>todavía no lo probamos en hardware</b> porque nos faltan componentes. La máquina de estados de la puerta todavía no está
+implementada: por ahora el <code>main</code> inicializa la placa y corre una <b>prueba manual de periféricos</b> que después se saca.
 </div>
 
 <h3>Contenido</h3>
@@ -50,10 +54,11 @@ inicializa la placa y corre una <b>prueba manual de periféricos</b> que se pued
   <li>Arquitectura del firmware</li>
   <li>Pinout provisorio</li>
   <li>Periférico por periférico</li>
-  <li>Cambios hechos a la librería de la cátedra</li>
+  <li>Cambios que le hicimos a la librería de la cátedra</li>
   <li>Procedimiento de prueba (cuando lleguen los componentes)</li>
   <li>Riesgos y problemas conocidos</li>
-  <li>Qué falta</li>
+  <li>Máquina de estados de la puerta (propuesta)</li>
+  <li>Qué nos falta</li>
   <li>Preguntas probables del coloquio</li>
 </ol>
 
@@ -64,8 +69,8 @@ inicializa la placa y corre una <b>prueba manual de periféricos</b> que se pued
   <tr><td>Workspace</td><td><code>G:\Mi unidad\CORESAGROUP\Personal</code></td></tr>
   <tr><td>Repositorio git (copia del TPO-Info2)</td><td><code>Personal\TPO-Info2</code> (remoto: github.com/zalocoder/TPO-Info2)</td></tr>
   <tr><td>Proyecto MCUXpresso</td><td><code>Personal\TPO-Info2\R2053-2026</code></td></tr>
-  <tr><td>Contexto para el grupo / para Claude</td><td><code>Personal\TPO-Info2\CLAUDE.md</code></td></tr>
-  <tr><td>Este informe</td><td><code>Personal\TPO-Info2\docs\</code></td></tr>
+  <tr><td>Documento de contexto (decisiones y reglas)</td><td><code>Personal\TPO-Info2\CLAUDE.md</code></td></tr>
+  <tr><td>Este resumen</td><td><code>Personal\TPO-Info2\docs\</code></td></tr>
 </table>
 <p><b>Abrirlo en MCUXpresso:</b> al arrancar el IDE elegir como workspace <code>G:\Mi unidad\CORESAGROUP\Personal</code>.
 Después <i>File → Import → General → Existing Projects into Workspace</i> y elegir <code>TPO-Info2\R2053-2026</code>
@@ -74,7 +79,7 @@ Después <i>File → Import → General → Existing Projects into Workspace</i>
 y Drive los sincroniza todo el tiempo. Si el build se pone lento o aparecen archivos "en conflicto", pausar la sincronización
 mientras se compila. Lo mismo para la carpeta <code>.git</code>: no trabajar desde dos PCs a la vez sobre la misma copia de Drive;
 para compartir con el grupo, usar <code>git push</code>/<code>pull</code> a GitHub.</div>
-<p>Nada está commiteado todavía: <code>git status</code> muestra <code>CLAUDE.md</code>, <code>docs/</code> y <code>R2053-2026/</code> como nuevos.</p>
+<p>El trabajo está en la rama <code>scai-perifericos</code> de GitHub. Todavía no está en <code>main</code>: pasa cuando el grupo lo revise y haga el merge.</p>
 
 <!-- ================================================================================================ -->
 <h2>2. Decisiones tomadas</h2>
@@ -85,7 +90,7 @@ para compartir con el grupo, usar <code>git push</code>/<code>pull</code> a GitH
   <tr><td>Enlace con la PC</td><td>WiFi con ESP8266 (USART2). La USART0 por USB queda para depurar</td><td>26/11/2026</td></tr>
   <tr><td>Lector NFC</td><td>PN532 por UART en modo HSU (USART1, 115200)</td><td>26/11/2026</td></tr>
   <tr><td>Núcleo</td><td>NFC + teclado + LCD + servo + reed + LEDs + buzzer + UART a la PC</td><td>26/11/2026</td></tr>
-  <tr><td>Máquina de estados</td><td class="t-warn">Sin definir. Por eso solo se configuraron periféricos</td><td>-</td></tr>
+  <tr><td>Máquina de estados</td><td class="t-warn">Hay una propuesta (sección 9), pero todavía no la cerramos. Por eso por ahora solo configuramos periféricos</td><td>-</td></tr>
 </table>
 
 <!-- ================================================================================================ -->
@@ -153,7 +158,7 @@ cada 1 ms (solo descontar contadores y barrer el teclado). Las otras ISR (UART, 
   <tr><td>Teclado columnas 0..3</td><td>P0_22, P0_23, P0_29, P0_7</td><td>GPIO entrada pull-up</td><td class="t-warn">Idem; P0_29 y P0_7 libres</td></tr>
   <tr><td>LED verde / azul / rojo</td><td>P1_0 / P1_1 / P1_2</td><td>GPIO (activo bajo)</td><td class="t-warn">LED RGB de la BRK. Azul = latido</td></tr>
   <tr><td>Buzzer</td><td>P0_0</td><td>GPIO</td><td class="t-mal">MARCADOR. Pin real según esquemático de la Infotrónic</td></tr>
-  <tr><td>Reed switch</td><td>P0_15</td><td>GPIO + PINT canal 0</td><td class="t-warn">Verificar que este libre</td></tr>
+  <tr><td>Reed switch</td><td>P0_15</td><td>GPIO + PINT canal 0</td><td class="t-warn">Verificar que esté libre</td></tr>
   <tr><td>Servo (señal)</td><td>P1_3</td><td>SCT_OUT0 por SWM</td><td class="t-warn">Verificar</td></tr>
   <tr><td>PC TX / RX</td><td>P0_25 / P0_24</td><td>USART0 (VCOM USB)</td><td class="t-warn">Verificar con el manual de la BRK</td></tr>
   <tr><td>PN532 TX / RX</td><td>P1_8 / P1_9</td><td>USART1 por SWM</td><td class="t-warn">Verificar</td></tr>
@@ -215,8 +220,8 @@ o sea <b>125000 baudios (8,5 % de error)</b>: con eso el PN532 y el ESP8266 no s
 
 <h3>5.6 PN532 por HSU</h3>
 <p>Solo está configurada la UART (USART1, 115200). <b>El protocolo del PN532 está PENDIENTE.</b> La prueba manual (tecla <code>*</code>) manda
-el preambulo de despertar y el comando <code>GetFirmwareVersion</code>:</p>
-<pre>55 55 00 00 ... 00          (preambulo: lo despierta del modo de bajo consumo)
+el preámbulo de despertar y el comando <code>GetFirmwareVersion</code>:</p>
+<pre>55 55 00 00 ... 00          (preámbulo: lo despierta del modo de bajo consumo)
 00 00 FF 02 FE D4 02 2A 00  (LEN=2, LCS=0x100-2=FE, D4=host→PN532, 02=GetFirmwareVersion, DCS=0x100-(D4+02)=2A)</pre>
 <p>Lo que responda se reenvía a la PC en hexa. <b>Respuesta esperada:</b> primero el ACK <code>00 00 FF 00 FF 00</code> y después una trama con
 <code>D5 03 32 01 06 07</code> (IC = 0x32 → PN532, firmware 1.6). Si no llega nada: revisar que las llaves del módulo estén en <b>HSU</b>
@@ -230,8 +235,8 @@ sin verificar. CH_PD (EN) tiene que estar en 3,3 V. Algunos ESP-01 vienen a 9600
 <code>WIFI_BAUDIOS</code>.</div>
 
 <h3>5.8 I2C1 + DS3231 (periférico no visto en la cursada)</h3>
-<p><code>13-i2c</code> es un driver I2C maestro <b>no bloqueante</b> escrito para el SCAI (el <code>LPC845.h</code> de la cátedra no traía los registros del I2C;
-se definieron en <code>i2c.h</code> según el manual UM11029). Clock: FRO 12 MHz / 15 = 800 kHz y 8 clocks por bit → <b>100 kHz</b>.</p>
+<p><code>13-i2c</code> es un driver I2C maestro <b>no bloqueante</b> que escribimos para el SCAI (el <code>LPC845.h</code> de la cátedra no traía los registros del I2C;
+los definimos en <code>i2c.h</code> según el manual UM11029). Clock: FRO 12 MHz / 15 = 800 kHz y 8 clocks por bit → <b>100 kHz</b>.</p>
 <p><code>Transferir(dir, tx, ntx, rx, nrx)</code> arranca una transacción y <code>Run()</code> la avanza <b>un paso por llamada</b>, mirando el bit
 <code>MSTPENDING</code>. Pasos: dirección+W → escribir bytes → START repetido → dirección+R → leer bytes → STOP. Si el esclavo no responde (NACK)
 termina en <code>ERROR</code>.</p>
@@ -256,23 +261,23 @@ Ojo: se asume que la fuente del SCT con <code>SCTCLKSEL = 0</code> es el FRO de 
 <h3>5.10 Reed switch con PINT</h3>
 <p>El pin tiene pull-up: con el imán cerca (puerta cerrada) el contacto cierra a GND → 0; puerta abierta → 1. El PINT canal 0 interrumpe en
 <b>ambos flancos</b>. La ISR solo borra el flag y recarga una cuenta de 30 ms; el SysTick la descuenta y, cuando pasan 30 ms sin flancos
-(se terminaron los rebotes), lee el pin y, si cambio, levanta <code>HuboCambio()</code>.</p>
+(se terminaron los rebotes), lee el pin y, si cambió, levanta <code>HuboCambio()</code>.</p>
 <p><b>Para mirar:</b> acercar y alejar el imán: el LCD tiene que alternar "Puerta CERRADA" / "Puerta ABIERTA" una sola vez por movimiento.
 Si se invierte, el MC-38 es del tipo normal cerrado: invertir la lógica en <code>reed.cpp</code>.</p>
 
 <h3>5.11 Buzzer</h3>
 <p>Clase nueva <code>buzzer</code>: patrones manejados por el SysTick, sin bloquear. Se asume buzzer <b>activo</b> (suena con solo darle tensión),
-así que no se puede cambiar el tono y se distingue por patron: aceptado = 1 pitido de 300 ms, rechazado = 3 de 80 ms, alarma = continuo.</p>
+así que no se puede cambiar el tono y se distingue por patrón: aceptado = 1 pitido de 300 ms, rechazado = 3 de 80 ms, alarma = continuo.</p>
 <p class="t-mal">Pendiente: el pin real y si es activo o pasivo (esquemático de la Infotrónic). Si es pasivo hay que generar la frecuencia con otra salida del SCT.</p>
 
 <!-- ================================================================================================ -->
-<h2 class="salto">6. Cambios hechos a la librería de la cátedra</h2>
-<p>Cada cambio está marcado en el código con un comentario <code>SCAI 26/11/2026</code>. Conviene poder explicarlos en el coloquio.</p>
+<h2 class="salto">6. Cambios que le hicimos a la librería de la cátedra</h2>
+<p>Cada cambio está marcado en el código con un comentario <code>SCAI 26/11/2026</code>. Los tenemos que poder explicar en el coloquio.</p>
 <table>
   <tr><th style="width:24%">Archivo</th><th>Cambio</th><th>Por qué</th></tr>
   <tr><td><code>12-USART/uart.cpp</code></td><td>Clock de las UART por FRG0 y BRG redondeado</td><td>Con la fórmula original 115200 daba 125000 baudios (8,5 % de error)</td></tr>
   <tr><td><code>12-USART/uart.cpp</code></td><td>Colas de TX y RX de 128 bytes</td><td>Las tramas <code>$EVT</code> y las respuestas del ESP8266 no entraban</td></tr>
-  <tr><td><code>02-gpio/gpio.cpp</code></td><td><code>SetTogglePin()</code> implementado con el registro <code>NOT</code></td><td>Estaba vacio (devolvía 1 y no hacía nada)</td></tr>
+  <tr><td><code>02-gpio/gpio.cpp</code></td><td><code>SetTogglePin()</code> implementado con el registro <code>NOT</code></td><td>Estaba vacío (devolvía 1 y no hacía nada)</td></tr>
   <tr><td><code>02-gpio/gpio.cpp</code></td><td>Tabla de IOCON: PIO0_8 = 14, PIO0_29 = 50, PIO0_30 = 51, PIO1_2 = 38</td><td>Apuntaban a otros pines (PIO1_2 apuntaba al de RESET). Verificar con la tabla de IOCON del UM11029</td></tr>
   <tr><td><code>02-gpio/gpio.cpp</code></td><td>Tablas de IOCON declaradas <code>extern</code></td><td>En C++ un <code>const</code> global es privado del archivo y el driver I2C las necesita</td></tr>
   <tr><td><code>aplicacion/inicializarInfotronic.*</code></td><td>Reescrito para el SCAI</td><td>Se sacaron display 7 seg, teclado 2x3, ADC y UART4; se agregaron los periféricos nuevos</td></tr>
@@ -316,11 +321,132 @@ así que no se puede cambiar el tono y se distingue por patron: aceptado = 1 pit
 </ul>
 
 <!-- ================================================================================================ -->
-<h2>9. Qué falta</h2>
+<h2 class="salto">9. Máquina de estados de la puerta (propuesta)</h2>
+<div class="caja warn"><b>Todavía no está en el código.</b> Es la propuesta con la que venimos trabajando para el nodo de puerta. Nos falta
+cerrarla como grupo (por ejemplo, cómo se distingue una entrada de una salida y si hay una o varias puertas) antes de implementarla.</div>
+
+<svg class="diag" viewBox="0 0 760 505" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Arial" font-size="11">
+  <defs>
+    <marker id="m" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#1d2430"/></marker>
+    <marker id="mg" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#5b6472"/></marker>
+    <style>
+      .e { fill:#fff; stroke:#1f5fa8; stroke-width:1.6; }
+      .e-al { fill:#fff; stroke:#b3261e; stroke-width:1.6; }
+      .e-ad { fill:#fff; stroke:#a86a00; stroke-width:1.6; }
+      .n { font-weight:700; text-anchor:middle; fill:#1d2430; }
+      .t { stroke:#1d2430; stroke-width:1.2; fill:none; }
+      .r { stroke:#5b6472; stroke-width:1.1; fill:none; stroke-dasharray:5 3; }
+      .l { font-size:9.5px; fill:#5b6472; paint-order:stroke; stroke:#fff; stroke-width:3px; }
+      .fant { fill:#f3f5f8; stroke:#5b6472; stroke-dasharray:4 3; }
+    </style>
+  </defs>
+
+  <!-- estado inicial -->
+  <circle cx="380" cy="10" r="5" fill="#1d2430"/>
+  <line class="t" x1="380" y1="15" x2="380" y2="30" marker-end="url(#m)"/>
+
+  <!-- estados -->
+  <rect class="e" x="310" y="32" width="140" height="36" rx="18"/><text class="n" x="380" y="54">REPOSO</text>
+  <rect class="e-ad" x="40" y="132" width="140" height="36" rx="18"/><text class="n" x="110" y="154">PIN_ADMIN</text>
+  <rect class="e" x="310" y="132" width="140" height="36" rx="18"/><text class="n" x="380" y="154">VALIDANDO</text>
+  <rect class="e-al" x="580" y="132" width="140" height="36" rx="18"/><text class="n" x="650" y="154">ALARMA_FORZADA</text>
+  <rect class="e-ad" x="40" y="272" width="140" height="36" rx="18"/><text class="n" x="110" y="294">MODO_ADMIN</text>
+  <rect class="e" x="180" y="242" width="140" height="36" rx="18"/><text class="n" x="250" y="264">DENEGADO</text>
+  <rect class="e" x="440" y="242" width="140" height="36" rx="18"/><text class="n" x="510" y="264">ACCESO_OK</text>
+  <rect class="e-al" x="180" y="362" width="140" height="36" rx="18"/><text class="n" x="250" y="384">BLOQUEADO</text>
+  <rect class="e" x="580" y="362" width="140" height="36" rx="18"/><text class="n" x="650" y="384">PUERTA_ABIERTA</text>
+  <rect class="e" x="440" y="452" width="140" height="36" rx="18"/><text class="n" x="510" y="474">CERRANDO</text>
+
+  <!-- "vuelve a REPOSO" dibujado aparte para no cruzar flechas -->
+  <rect class="fant" x="40" y="366" width="90" height="28" rx="14"/><text x="85" y="384" text-anchor="middle" fill="#5b6472">REPOSO</text>
+  <rect class="fant" x="290" y="456" width="90" height="28" rx="14"/><text x="335" y="474" text-anchor="middle" fill="#5b6472">REPOSO</text>
+
+  <!-- REPOSO -> VALIDANDO -->
+  <line class="t" x1="380" y1="68" x2="380" y2="130" marker-end="url(#m)"/>
+  <text class="l" x="386" y="104">UID leído</text>
+  <!-- REPOSO -> PIN_ADMIN -->
+  <line class="t" x1="310" y1="62" x2="152" y2="131" marker-end="url(#m)"/>
+  <text class="l" x="232" y="88" text-anchor="middle">tecla *</text>
+  <!-- PIN_ADMIN -> REPOSO -->
+  <polyline class="t" points="80,132 80,50 308,50" marker-end="url(#m)"/>
+  <text class="l" x="86" y="104">PIN incorrecto / timeout</text>
+  <!-- PIN_ADMIN -> MODO_ADMIN -->
+  <line class="t" x1="110" y1="168" x2="110" y2="270" marker-end="url(#m)"/>
+  <text class="l" x="116" y="222">PIN correcto</text>
+  <!-- MODO_ADMIN -> REPOSO -->
+  <polyline class="t" points="40,290 20,290 20,40 308,40" marker-end="url(#m)"/>
+  <text class="l" x="15" y="200" text-anchor="middle" transform="rotate(-90 15 200)"># confirma / timeout</text>
+  <!-- REPOSO -> ALARMA_FORZADA -->
+  <line class="t" x1="450" y1="60" x2="618" y2="130" marker-end="url(#m)"/>
+  <text class="l" x="534" y="76" text-anchor="middle" transform="rotate(22.6 534 76)">reed abierto sin acceso válido</text>
+  <!-- ALARMA_FORZADA -> REPOSO -->
+  <polyline class="t" points="720,150 745,150 745,40 452,40" marker-end="url(#m)"/>
+  <text class="l" x="600" y="33" text-anchor="middle">PIN admin correcto o $RST desde la PC</text>
+  <!-- VALIDANDO -> DENEGADO -->
+  <line class="t" x1="350" y1="168" x2="272" y2="240" marker-end="url(#m)"/>
+  <text class="l" x="296" y="206" text-anchor="end">inválido</text>
+  <!-- VALIDANDO -> ACCESO_OK -->
+  <line class="t" x1="410" y1="168" x2="488" y2="240" marker-end="url(#m)"/>
+  <text class="l" x="466" y="204">válido</text>
+  <!-- DENEGADO -> REPOSO -->
+  <line class="t" x1="222" y1="242" x2="330" y2="70" marker-end="url(#m)"/>
+  <text class="l" x="250" y="180" text-anchor="end">a los 2 s</text>
+  <!-- DENEGADO -> BLOQUEADO -->
+  <line class="t" x1="250" y1="278" x2="250" y2="360" marker-end="url(#m)"/>
+  <text class="l" x="256" y="324">3 intentos fallidos</text>
+  <!-- BLOQUEADO -> REPOSO -->
+  <line class="r" x1="180" y1="380" x2="132" y2="380" marker-end="url(#mg)"/>
+  <text class="l" x="110" y="414" text-anchor="middle">a los N s (fallidos = 0)</text>
+  <!-- ACCESO_OK -> PUERTA_ABIERTA -->
+  <line class="t" x1="560" y1="278" x2="628" y2="360" marker-end="url(#m)"/>
+  <text class="l" x="600" y="306">reed abierto</text>
+  <!-- ACCESO_OK -> CERRANDO -->
+  <line class="t" x1="510" y1="278" x2="510" y2="450" marker-end="url(#m)"/>
+  <text class="l" x="516" y="410">5 s sin abrir</text>
+  <!-- PUERTA_ABIERTA -> CERRANDO -->
+  <line class="t" x1="630" y1="398" x2="566" y2="450" marker-end="url(#m)"/>
+  <text class="l" x="612" y="440">reed cerrado</text>
+  <!-- PUERTA_ABIERTA: abierta demasiado tiempo (se queda en el estado) -->
+  <path class="t" d="M690,362 C686,330 724,330 712,360" marker-end="url(#m)"/>
+  <text class="l" x="756" y="326" text-anchor="end">T s abierta: aviso + $ALM</text>
+  <!-- CERRANDO -> REPOSO -->
+  <line class="r" x1="440" y1="470" x2="382" y2="470" marker-end="url(#mg)"/>
+  <text class="l" x="410" y="500" text-anchor="middle">servo cerrado</text>
+</svg>
+<p style="font-size:9pt;color:#5b6472">Azul: flujo normal de acceso. Rojo: alarmas. Naranja: modo administrador. Las cápsulas punteadas "REPOSO"
+son el mismo estado REPOSO, dibujado aparte para que no se crucen las flechas.</p>
+
+<table>
+  <tr><th style="width:20%">Estado</th><th>Qué hace</th><th style="width:34%">Sale cuando...</th></tr>
+  <tr><td><code>REPOSO</code></td><td>LCD "Acerque tarjeta", servo cerrado</td><td>UID leído → VALIDANDO · tecla * → PIN_ADMIN · reed abierto → ALARMA_FORZADA</td></tr>
+  <tr><td><code>VALIDANDO</code></td><td>Busca el UID en la tabla y chequea nivel, sector, horario, antipassback y si está habilitado</td><td>válido → ACCESO_OK · inválido → DENEGADO</td></tr>
+  <tr><td><code>ACCESO_OK</code></td><td>LED verde, 1 pitido, abre el servo, registra el evento (<code>$EVT</code>), arranca un timer de 5 s</td><td>reed abierto → PUERTA_ABIERTA · 5 s sin abrir → CERRANDO</td></tr>
+  <tr><td><code>PUERTA_ABIERTA</code></td><td>Espera que se cierre la puerta</td><td>reed cerrado → CERRANDO · a los T s manda <code>$ALM ABIERTA</code> y avisa con el buzzer, sin cambiar de estado</td></tr>
+  <tr><td><code>CERRANDO</code></td><td>Cierra el servo. Si la credencial es de un solo uso y era una salida, la deshabilita</td><td>→ REPOSO</td></tr>
+  <tr><td><code>DENEGADO</code></td><td>LED rojo, 3 pitidos, LCD "Acceso denegado", registra el intento, <code>fallidos++</code></td><td>fallidos ≥ 3 → BLOQUEADO · a los 2 s → REPOSO</td></tr>
+  <tr><td><code>BLOQUEADO</code></td><td>Ignora el lector N segundos y manda <code>$ALM BLOQUEO</code> a la PC</td><td>a los N s → REPOSO (fallidos = 0)</td></tr>
+  <tr><td><code>ALARMA_FORZADA</code></td><td>Buzzer continuo y <code>$ALM FORZADA</code> a la PC</td><td>PIN admin correcto o <code>$RST</code> de la PC → REPOSO</td></tr>
+  <tr><td><code>PIN_ADMIN</code></td><td>Pide el PIN de 4 dígitos por teclado</td><td>correcto → MODO_ADMIN · incorrecto o timeout → REPOSO</td></tr>
+  <tr><td><code>MODO_ADMIN</code></td><td>Alta rápida: se acerca la tarjeta y se elige nivel y sector con el teclado</td><td># confirma o timeout → REPOSO</td></tr>
+</table>
+
+<h3>Cómo la pensamos implementar</h3>
+<ul>
+  <li>Un solo archivo (<code>aplicacion/mde_puerta.cpp</code>) con un <code>enum</code> de estados y una función <code>MdE_Puerta()</code> con un
+      <code>switch(estado)</code>, que se llama en cada vuelta del <code>main</code> (donde hoy está <code>Prueba_Run()</code>).</li>
+  <li>Los eventos salen de lo que ya está configurado: <code>Teclado-&gt;GetKey()</code>, <code>Puerta-&gt;HuboCambio()</code> /
+      <code>Abierta()</code>, el UID que entregue el PN532 y los <code>timer</code> de la cátedra para los 2 s, 5 s, N s y T s.</li>
+  <li>Las acciones también: <code>Servo-&gt;Angulo()</code>, <code>LedVerde</code> / <code>LedRojo</code>, <code>Buzzer-&gt;Pitidos()</code> /
+      <code>Continuo()</code>, <code>lcd-&gt;Set()</code> y las tramas a la PC.</li>
+  <li>Ningún estado espera en un loop: si no pasó nada, <code>MdE_Puerta()</code> vuelve enseguida.</li>
+</ul>
+
+<!-- ================================================================================================ -->
+<h2>10. Qué nos falta</h2>
 <p>En el orden en que conviene hacerlo:</p>
 <ol>
   <li><b>Verificar el hardware</b>: esquemáticos (pinout y buzzer), medir el clock, correr la prueba de la sección 7.</li>
-  <li><b>Definir la máquina de estados de la puerta</b> (decisión del grupo; la sección 5 del CLAUDE.md es la propuesta original).</li>
+  <li><b>Cerrar la máquina de estados de la puerta</b> a partir de la propuesta de la sección 9, y después implementarla.</li>
   <li><b>PN532</b>: máquina de estados no bloqueante enviar → ACK → respuesta → timeout, con <code>SAMConfiguration (0x14)</code> e
       <code>InListPassiveTarget (0x4A)</code> para leer el UID.</li>
   <li><b>ESP8266</b>: secuencia AT (modo estación, conexión a la red, socket TCP o UDP con la PC) como máquina de estados, y definir cómo la app Qt se conecta.</li>
@@ -329,22 +455,22 @@ así que no se puede cambiar el tono y se distingue por patron: aceptado = 1 pit
   <li><b>Tabla de usuarios</b> y validaciones (nivel, sector como flags de bits, horario, antipassback, habilitado).</li>
   <li><b>Flags y alarmas</b>: llegada tarde, 3 intentos fallidos → bloqueo, puerta forzada, puerta abierta demasiado tiempo.</li>
   <li><b>Modo administrador</b> por teclado (PIN de 4 dígitos, alta rápida de tarjeta).</li>
-  <li>DS3231: revisar el bit <b>OSF</b> (registro 0x0F) al arrancar para saber si la hora se perdio y pedirla a la PC.</li>
+  <li>DS3231: revisar el bit <b>OSF</b> (registro 0x0F) al arrancar para saber si la hora se perdió y pedirla a la PC.</li>
   <li>Decisiones abiertas: huella AS608, persistencia (IAP o recarga desde la PC), una o varias puertas, template de la cátedra.</li>
   <li>Cuando exista la MdE: <code>PRUEBA_PERIFERICOS = 0</code> y, si se quiere, borrar <code>prueba_perifericos.*</code>.</li>
 </ol>
 
 <!-- ================================================================================================ -->
-<h2>10. Preguntas probables del coloquio</h2>
+<h2>11. Preguntas probables del coloquio</h2>
 <table>
   <tr><th style="width:42%">Pregunta</th><th>Respuesta corta</th></tr>
   <tr><td>¿Por qué la ISR del SysTick no ejecuta los handlers de los timers?</td><td>Para que la ISR sea corta. Solo marca "vencido"; el handler corre en el main loop vía <code>Timers.TmrEvent()</code>.</td></tr>
   <tr><td>¿Por qué los timers se crean dentro de <code>main()</code>?</td><td>Se enganchan a <code>g_CallbackList</code>, que vive en otro archivo: C++ no garantiza el orden de construcción entre archivos. Y se crean antes de arrancar el SysTick para que la ISR no recorra la lista mientras cambia.</td></tr>
   <tr><td>¿Cómo se llega a 115200 baudios?</td><td>Con el generador fraccional FRG0: 12 MHz / (1 + 22/256) ≈ 11,05 MHz = 6 × 16 × 115200.</td></tr>
-  <tr><td>¿Cómo genera el PWM el SCT?</td><td>Contador a 1 MHz; MATCH0 = 20 ms pone la salida en 1 y reinicia; MATCH1 = ancho de pulso la pone en 0. Se cambia el angulo escribiendo MATCHREL1.</td></tr>
+  <tr><td>¿Cómo genera el PWM el SCT?</td><td>Contador a 1 MHz; MATCH0 = 20 ms pone la salida en 1 y reinicia; MATCH1 = ancho de pulso la pone en 0. Se cambia el ángulo escribiendo MATCHREL1.</td></tr>
   <tr><td>¿Por qué el I2C no bloquea?</td><td><code>Run()</code> avanza un paso solo si el hardware terminó el anterior (MSTPENDING). Si no, vuelve enseguida.</td></tr>
   <tr><td>¿Cómo se evita el rebote del reed?</td><td>Cada flanco recarga una cuenta de 30 ms; recién cuando pasan 30 ms sin flancos se lee el pin.</td></tr>
-  <tr><td>¿Para que sirve la Switch Matrix?</td><td>Para sacar las funciones movibles (UART, I2C1-3, SCT) por el pin que uno elija.</td></tr>
+  <tr><td>¿Para qué sirve la Switch Matrix?</td><td>Para sacar las funciones movibles (UART, I2C1-3, SCT) por el pin que uno elija.</td></tr>
 </table>
 
 </body>
