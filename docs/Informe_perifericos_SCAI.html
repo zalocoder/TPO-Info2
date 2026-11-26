@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>SCAI - Informe de periféricos</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm 18mm 16mm; }
+  :root { --tinta:#1d2430; --gris:#5b6472; --borde:#cfd5dd; --suave:#f3f5f8; --acento:#1f5fa8; --ok:#1e7b46; --warn:#a86a00; --mal:#b3261e; }
+  body { font-family: "Segoe UI", Arial, sans-serif; color: var(--tinta); font-size: 10.2pt; line-height: 1.45; background:#fff; }
+  h1 { font-size: 21pt; margin: 0 0 4px; color: var(--acento); }
+  h2 { font-size: 14pt; margin: 22px 0 8px; padding-bottom: 3px; border-bottom: 2px solid var(--acento); color: var(--acento); page-break-after: avoid; }
+  h3 { font-size: 11.5pt; margin: 14px 0 5px; page-break-after: avoid; }
+  p { margin: 5px 0; }
+  .sub { color: var(--gris); margin-bottom: 14px; }
+  table { border-collapse: collapse; width: 100%; margin: 6px 0 10px; font-size: 9.2pt; page-break-inside: auto; }
+  tr { page-break-inside: avoid; }
+  th, td { border: 1px solid var(--borde); padding: 4px 6px; text-align: left; vertical-align: top; }
+  th { background: var(--suave); }
+  code { font-family: Consolas, "Courier New", monospace; font-size: 9pt; background: var(--suave); padding: 0 3px; border-radius: 2px; }
+  pre { font-family: Consolas, monospace; font-size: 8.6pt; background: var(--suave); border: 1px solid var(--borde); padding: 7px 9px; white-space: pre-wrap; page-break-inside: avoid; }
+  .caja { border: 1px solid var(--borde); border-left: 4px solid var(--acento); background: var(--suave); padding: 7px 10px; margin: 8px 0; page-break-inside: avoid; }
+  .caja.warn { border-left-color: var(--warn); }
+  .caja.mal { border-left-color: var(--mal); }
+  .t-ok { color: var(--ok); font-weight: 600; }
+  .t-warn { color: var(--warn); font-weight: 600; }
+  .t-mal { color: var(--mal); font-weight: 600; }
+  ul, ol { margin: 4px 0 6px 20px; padding: 0; }
+  li { margin: 2px 0; }
+  .indice { columns: 2; font-size: 9.6pt; }
+  .salto { page-break-before: always; }
+  .diag { width: 100%; margin: 6px 0 4px; }
+  .chk td:first-child { width: 18px; text-align: center; }
+</style>
+</head>
+<body>
+
+<h1>SCAI - Sistema de Control de Acceso Inteligente</h1>
+<div class="sub">Informe de implementación de periféricos · TPO Informática II (UTN, 2026) · LPC845-BRK + Infotrónic · 26/11/2026</div>
+
+<div class="caja">
+<b>Estado en una línea:</b> todos los periféricos del núcleo están <b>configurados y compilan</b> (45 KB de 64 KB de flash),
+pero <b>nada se probó en hardware</b> porque faltan componentes. No hay máquina de estados de la puerta: el <code>main</code>
+inicializa la placa y corre una <b>prueba manual de periféricos</b> que se puede quitar.
+</div>
+
+<h3>Contenido</h3>
+<ol class="indice">
+  <li>Dónde está el proyecto y cómo abrirlo</li>
+  <li>Decisiones tomadas</li>
+  <li>Arquitectura del firmware</li>
+  <li>Pinout provisorio</li>
+  <li>Periférico por periférico</li>
+  <li>Cambios hechos a la librería de la cátedra</li>
+  <li>Procedimiento de prueba (cuando lleguen los componentes)</li>
+  <li>Riesgos y problemas conocidos</li>
+  <li>Qué falta</li>
+  <li>Preguntas probables del coloquio</li>
+</ol>
+
+<!-- ================================================================================================ -->
+<h2>1. Dónde está el proyecto y cómo abrirlo</h2>
+<table>
+  <tr><th style="width:32%">Qué</th><th>Dónde</th></tr>
+  <tr><td>Workspace</td><td><code>G:\Mi unidad\CORESAGROUP\Personal</code></td></tr>
+  <tr><td>Repositorio git (copia del TPO-Info2)</td><td><code>Personal\TPO-Info2</code> (remoto: github.com/zalocoder/TPO-Info2)</td></tr>
+  <tr><td>Proyecto MCUXpresso</td><td><code>Personal\TPO-Info2\R2053-2026</code></td></tr>
+  <tr><td>Contexto para el grupo / para Claude</td><td><code>Personal\TPO-Info2\CLAUDE.md</code></td></tr>
+  <tr><td>Este informe</td><td><code>Personal\TPO-Info2\docs\</code></td></tr>
+</table>
+<p><b>Abrirlo en MCUXpresso:</b> al arrancar el IDE elegir como workspace <code>G:\Mi unidad\CORESAGROUP\Personal</code>.
+Después <i>File → Import → General → Existing Projects into Workspace</i> y elegir <code>TPO-Info2\R2053-2026</code>
+<b>sin</b> tildar "Copy projects into workspace". Compilar con el martillo (configuración Debug).</p>
+<div class="caja warn"><b>Ojo con Google Drive:</b> el IDE escribe muchos archivos chicos (<code>.metadata</code>, <code>Debug/</code>, <code>.o</code>)
+y Drive los sincroniza todo el tiempo. Si el build se pone lento o aparecen archivos "en conflicto", pausar la sincronización
+mientras se compila. Lo mismo para la carpeta <code>.git</code>: no trabajar desde dos PCs a la vez sobre la misma copia de Drive;
+para compartir con el grupo, usar <code>git push</code>/<code>pull</code> a GitHub.</div>
+<p>Nada está commiteado todavía: <code>git status</code> muestra <code>CLAUDE.md</code>, <code>docs/</code> y <code>R2053-2026/</code> como nuevos.</p>
+
+<!-- ================================================================================================ -->
+<h2>2. Decisiones tomadas</h2>
+<table>
+  <tr><th style="width:34%">Tema</th><th>Decisión</th><th style="width:16%">Fecha</th></tr>
+  <tr><td>Lenguaje / base</td><td>C++ sobre la librería de la cátedra (Ing. Trujillo), no C99 desde cero</td><td>26/11/2026</td></tr>
+  <tr><td>Reloj</td><td>RTC DS3231 por I2C (no reloj por software)</td><td>26/11/2026</td></tr>
+  <tr><td>Enlace con la PC</td><td>WiFi con ESP8266 (USART2). La USART0 por USB queda para depurar</td><td>26/11/2026</td></tr>
+  <tr><td>Lector NFC</td><td>PN532 por UART en modo HSU (USART1, 115200)</td><td>26/11/2026</td></tr>
+  <tr><td>Núcleo</td><td>NFC + teclado + LCD + servo + reed + LEDs + buzzer + UART a la PC</td><td>26/11/2026</td></tr>
+  <tr><td>Máquina de estados</td><td class="t-warn">Sin definir. Por eso solo se configuraron periféricos</td><td>-</td></tr>
+</table>
+
+<!-- ================================================================================================ -->
+<h2>3. Arquitectura del firmware</h2>
+<p>Hay dos "lugares" donde corre código: el <b>main loop</b> (todo lo que tarda o tiene lógica) y la <b>ISR del SysTick</b>
+cada 1 ms (solo descontar contadores y barrer el teclado). Las otras ISR (UART, PINT) solo mueven un byte o levantan un flag.</p>
+
+<svg class="diag" viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Arial" font-size="11">
+  <defs><marker id="f" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#5b6472"/></marker></defs>
+  <rect x="10" y="10" width="350" height="280" rx="6" fill="#f3f5f8" stroke="#cfd5dd"/>
+  <text x="22" y="30" font-weight="700" fill="#1f5fa8">main loop  (while(1), nunca se bloquea)</text>
+  <rect x="25" y="45" width="320" height="30" rx="4" fill="#fff" stroke="#cfd5dd"/><text x="35" y="64">Timers.TmrEvent()  → handlers de timers vencidos</text>
+  <rect x="25" y="82" width="320" height="30" rx="4" fill="#fff" stroke="#cfd5dd"/><text x="35" y="101">rtc-&gt;Run()  → avanza un paso la transacción I2C</text>
+  <rect x="25" y="119" width="320" height="30" rx="4" fill="#fff" stroke="#cfd5dd"/><text x="35" y="138">Prueba_Run()  → teclado, reed, RTC, UARTs (provisorio)</text>
+  <rect x="25" y="156" width="320" height="30" rx="4" fill="#fff" stroke="#b3261e" stroke-dasharray="4 3"/><text x="35" y="175" fill="#b3261e">PENDIENTE: PN532_Run, PC_Run, WiFi_Run, MdE_Puerta</text>
+  <text x="25" y="212" fill="#5b6472">Lee lo que dejaron las ISR:</text>
+  <text x="25" y="228" fill="#5b6472">Teclado-&gt;GetKey(), Puerta-&gt;HuboCambio(), uart-&gt;Receive()</text>
+  <text x="25" y="244" fill="#5b6472">Escribe en los periféricos:</text>
+  <text x="25" y="260" fill="#5b6472">lcd-&gt;Set(), Servo-&gt;Angulo(), Buzzer-&gt;Pitidos(), uart-&gt;Transmit()</text>
+
+  <rect x="400" y="10" width="350" height="150" rx="6" fill="#f3f5f8" stroke="#cfd5dd"/>
+  <text x="412" y="30" font-weight="700" fill="#1f5fa8">ISR SysTick (cada 1 ms)</text>
+  <text x="412" y="50">recorre g_CallbackList y llama inBackGround() de:</text>
+  <text x="422" y="70">· cada timer (descuenta, marca vencido)</text>
+  <text x="422" y="88">· teclado (barrido + antirrebote)</text>
+  <text x="422" y="106">· LCD (saca un dato de su cola)</text>
+  <text x="422" y="124">· LEDs (parpadeo) · buzzer (patrones)</text>
+  <text x="422" y="142">· reed (antirrebote de 30 ms)</text>
+
+  <rect x="400" y="175" width="350" height="115" rx="6" fill="#f3f5f8" stroke="#cfd5dd"/>
+  <text x="412" y="195" font-weight="700" fill="#1f5fa8">Otras ISR (mínimas)</text>
+  <text x="422" y="215">· UART0/1/2: byte recibido → cola RX;</text>
+  <text x="432" y="231">TX libre → saca de la cola TX</text>
+  <text x="422" y="251">· PININT0: flanco del reed → arranca antirrebote</text>
+  <text x="422" y="271">· SCT: no usa interrupciones (todo por hardware)</text>
+  <line x1="400" y1="85" x2="362" y2="85" stroke="#5b6472" marker-end="url(#f)"/>
+  <line x1="400" y1="230" x2="362" y2="230" stroke="#5b6472" marker-end="url(#f)"/>
+</svg>
+
+<h3>Archivos</h3>
+<table>
+  <tr><th style="width:38%">Archivo / carpeta</th><th>Qué tiene</th><th style="width:13%">Origen</th></tr>
+  <tr><td><code>aplicacion/main.cpp</code></td><td>Crea el timer de 1 s del RTC, llama a la inicialización y corre el main loop</td><td>SCAI</td></tr>
+  <tr><td><code>aplicacion/pinout.h</code></td><td><b>Todos</b> los pines y baudios, en un solo lugar</td><td>SCAI</td></tr>
+  <tr><td><code>aplicacion/inicializarInfotronic.*</code></td><td>Crea todos los objetos de la placa (rol de <code>Board_Init</code>)</td><td>cátedra, reescrito</td></tr>
+  <tr><td><code>aplicacion/prueba_perifericos.*</code></td><td>Prueba manual. Se habilita con <code>PRUEBA_PERIFERICOS</code> en main.cpp</td><td>SCAI</td></tr>
+  <tr><td><code>13-i2c/</code></td><td>Driver I2C maestro no bloqueante</td><td>SCAI</td></tr>
+  <tr><td><code>14-rtc/</code></td><td>DS3231: leer/escribir fecha y hora</td><td>SCAI</td></tr>
+  <tr><td><code>15-servo/</code></td><td>SCTimer como PWM de 50 Hz para el SG90</td><td>SCAI</td></tr>
+  <tr><td><code>16-reed/</code></td><td>Reed switch con interrupción PINT + antirrebote</td><td>SCAI</td></tr>
+  <tr><td><code>17-buzzer/</code></td><td>Buzzer con patrones de pitidos sin bloquear</td><td>SCAI</td></tr>
+  <tr><td><code>02-gpio, 03-*, 06-timer, 07-timers, 08-teclado, 10-lcd, 12-USART, firmware/</code></td><td>Librería de la cátedra (gpio, Callback, Led, timer, teclado, LCD, UART, SysTick, PLL, SWM)</td><td>cátedra</td></tr>
+  <tr><td><code>09-display_de_segmentos, 11-adc</code></td><td>Siguen en el proyecto pero <b>no se usan</b>; el linker los descarta</td><td>cátedra</td></tr>
+</table>
+
+<!-- ================================================================================================ -->
+<h2 class="salto">4. Pinout provisorio</h2>
+<div class="caja warn">Armado a partir de lo que ya usaba <code>inicializarInfotronic.cpp</code> (define <code>KIT2022</code>) y del manual de la BRK.
+<b>No se verificó con los esquemáticos.</b> Antes de conectar cada módulo, confirmar su fila. Para mover un pin se cambia solo <code>pinout.h</code>.</div>
+<table>
+  <tr><th>Señal</th><th>Pin</th><th>Periférico</th><th>Estado / comentario</th></tr>
+  <tr><td>LCD D4, D5, D6, D7</td><td>P0_9, P0_10, P0_11, P0_13</td><td>GPIO</td><td class="t-ok">Fijo de la Infotrónic</td></tr>
+  <tr><td>LCD RS, EN</td><td>P0_1, P0_14</td><td>GPIO</td><td class="t-ok">Fijo de la Infotrónic</td></tr>
+  <tr><td>Teclado filas 0..3</td><td>P0_18, P0_19, P0_20, P0_21</td><td>GPIO salida</td><td class="t-warn">Reusa líneas del display 7 seg (ver nota)</td></tr>
+  <tr><td>Teclado columnas 0..3</td><td>P0_22, P0_23, P0_29, P0_7</td><td>GPIO entrada pull-up</td><td class="t-warn">Idem; P0_29 y P0_7 libres</td></tr>
+  <tr><td>LED verde / azul / rojo</td><td>P1_0 / P1_1 / P1_2</td><td>GPIO (activo bajo)</td><td class="t-warn">LED RGB de la BRK. Azul = latido</td></tr>
+  <tr><td>Buzzer</td><td>P0_0</td><td>GPIO</td><td class="t-mal">MARCADOR. Pin real según esquemático de la Infotrónic</td></tr>
+  <tr><td>Reed switch</td><td>P0_15</td><td>GPIO + PINT canal 0</td><td class="t-warn">Verificar que este libre</td></tr>
+  <tr><td>Servo (señal)</td><td>P1_3</td><td>SCT_OUT0 por SWM</td><td class="t-warn">Verificar</td></tr>
+  <tr><td>PC TX / RX</td><td>P0_25 / P0_24</td><td>USART0 (VCOM USB)</td><td class="t-warn">Verificar con el manual de la BRK</td></tr>
+  <tr><td>PN532 TX / RX</td><td>P1_8 / P1_9</td><td>USART1 por SWM</td><td class="t-warn">Verificar</td></tr>
+  <tr><td>ESP8266 TX / RX</td><td>P1_6 / P1_7</td><td>USART2 por SWM</td><td class="t-warn">Verificar</td></tr>
+  <tr><td>DS3231 SDA / SCL</td><td>P1_4 / P1_5</td><td>I2C1 por SWM, open-drain</td><td class="t-warn">Verificar</td></tr>
+  <tr><td>Prohibidos</td><td>P0_2, P0_3, P0_5</td><td>SWD / RESET</td><td>No tocar nunca</td></tr>
+</table>
+<p><b>Por qué el teclado usa las líneas del display de 7 segmentos:</b> un 4x4 necesita 8 pines y casi todos los libres de la BRK ya
+están tomados por el resto de los módulos. El SCAI no usa el display de 7 segmentos de la Infotrónic, y sus líneas (P0_18 a P0_23) van a
+<i>entradas</i> del 4511 y del 4017. Una entrada CMOS no "pelea" contra el micro, así que se pueden usar: las filas como salidas y las
+columnas como entradas con pull-up. Efecto secundario: el display puede mostrar cualquier cosa. Si el esquemático muestra otra cosa,
+hay que reubicar el teclado.</p>
+<p><b>Por qué I2C1 y no I2C0:</b> el I2C0 tiene pines fijos (P0_10 y P0_11), que en la Infotrónic son D5 y D6 del LCD.
+I2C1 se puede poner en cualquier pin con la Switch Matrix.</p>
+<p><b>Por qué el reed usa el canal 0 del PINT:</b> los canales 6 y 7 comparten la interrupción con USART3 y USART4 (la librería de la cátedra
+ya usa esos vectores para las UART).</p>
+
+<!-- ================================================================================================ -->
+<h2>5. Periférico por periférico</h2>
+
+<h3>5.1 Clock y SysTick</h3>
+<p><code>Inicializar_PLL()</code> (cátedra) arma el clock del sistema. <code>Inicializar_SysTick(1)</code> genera la interrupción cada 1 ms usando
+<code>FREQ_CLOCK</code>. Todos los tiempos del firmware (timers, antirrebotes, buzzer, LEDs) dependen de ese tick.</p>
+<div class="caja mal"><b>Para mirar:</b> <code>LPC845.h</code> define <code>FREQ_CLOCK = 30 MHz</code>, pero el comentario de <code>dr_pll.cpp</code> dice
+"main_clk = 24 MHz". Si el clock real es 24 MHz, el "ms" dura 1,25 ms y todos los tiempos quedan 25 % más largos.
+<b>Cómo verificarlo:</b> el LED azul cambia cada 500 ms → en 60 segundos de cronómetro tiene que prender <b>60 veces</b>. Si prende 48, el clock es 24 MHz y hay que corregir <code>FREQ_CLOCK</code>.</div>
+
+<h3>5.2 LEDs (GPIO)</h3>
+<p>Se usa la clase <code>Led</code> de la cátedra sobre el LED RGB de la BRK, que es <b>activo en bajo</b> (por eso los <code>gpio</code> se crean con
+<code>gpio::low</code>: <code>SetPin()</code> lo prende). Uso: <code>LedVerde = Led::ON;</code>, <code>LedRojo = Led::OFF;</code>, <code>LedAzul = Led::BLINK;</code>.
+El azul queda parpadeando como "latido": si se congela, el programa está trabado.</p>
+
+<h3>5.3 Teclado 4x4 (GPIO + SysTick)</h3>
+<p>Clase <code>teclado</code> de la cátedra, que ya acepta cualquier cantidad de filas y columnas. Cada 1 ms el SysTick pone una fila en 0 y lee las 4 columnas;
+una tecla se acepta después de 4 lecturas iguales (antirrebote). El código es <code>columna + fila × 4</code> (0..15) y la tabla
+<code>TECLAS_4x4[]</code> lo traduce al carácter impreso ('1'...'D', '*', '#').</p>
+<p><b>Para mirar:</b> el orden de la tabla depende de cómo esté cableado el teclado. Si al apretar '1' aparece otra tecla, reordenar
+<code>TECLAS_4x4</code> en <code>inicializarInfotronic.cpp</code> (o invertir filas/columnas en <code>pinout.h</code>).</p>
+
+<h3>5.4 LCD 16x2 (GPIO, 4 bits)</h3>
+<p>Clase <code>Lcd</code> de la cátedra. <code>lcd-&gt;Set("texto", fila, columna)</code> encola los caracteres y el SysTick los manda de a uno, así que no bloquea.
+Se crea <b>después</b> de arrancar el SysTick porque su constructor espera los tiempos de arranque del HD44780.</p>
+<p><b>Para mirar:</b> si no se ve nada, primero el contraste (preset de la Infotrónic) antes de sospechar del código.</p>
+
+<h3>5.5 UARTs (USART0, 1 y 2)</h3>
+<p>Clase <code>uart</code> de la cátedra: recepción y transmisión por interrupción con colas circulares (<code>ColaCircular6</code>, que protege el contador
+con una sección crítica). Se crean tres:</p>
+<table>
+  <tr><th>Objeto</th><th>USART</th><th>Baudios</th><th>Modo de línea</th><th>Para qué</th></tr>
+  <tr><td><code>uartPC</code></td><td>0</td><td>115200</td><td>LF (<code>\n</code>)</td><td>Depuración / protocolo <code>$...</code> por USB</td></tr>
+  <tr><td><code>uartNFC</code></td><td>1</td><td>115200</td><td>binario</td><td>PN532 (HSU)</td></tr>
+  <tr><td><code>uartWiFi</code></td><td>2</td><td>115200</td><td>CR+LF</td><td>ESP8266 (comandos AT)</td></tr>
+</table>
+<div class="caja"><b>Corrección importante (baudios):</b> la clase de la cátedra calculaba <code>BRG = 12 MHz / (16 × baudios) − 1</code>. Para 115200 da 5,5 → 5,
+o sea <b>125000 baudios (8,5 % de error)</b>: con eso el PN532 y el ESP8266 no se entienden. Ahora el clock de las UART pasa por el
+<b>generador fraccional FRG0</b>: 12 MHz / (1 + 22/256) = 11,0504 MHz, casi exactamente 6 × 16 × 115200. Resultado: 115200 con 0,08 % de error
+(y 9600 también sigue andando).</div>
+<p>También se agrandaron las colas a 128 bytes (eran 32 de TX y 64 de RX): una trama <code>$EVT</code> tiene unos 70 caracteres y, si no entra, la cola descarta el resto.</p>
+
+<h3>5.6 PN532 por HSU</h3>
+<p>Solo está configurada la UART (USART1, 115200). <b>El protocolo del PN532 está PENDIENTE.</b> La prueba manual (tecla <code>*</code>) manda
+el preambulo de despertar y el comando <code>GetFirmwareVersion</code>:</p>
+<pre>55 55 00 00 ... 00          (preambulo: lo despierta del modo de bajo consumo)
+00 00 FF 02 FE D4 02 2A 00  (LEN=2, LCS=0x100-2=FE, D4=host→PN532, 02=GetFirmwareVersion, DCS=0x100-(D4+02)=2A)</pre>
+<p>Lo que responda se reenvía a la PC en hexa. <b>Respuesta esperada:</b> primero el ACK <code>00 00 FF 00 FF 00</code> y después una trama con
+<code>D5 03 32 01 06 07</code> (IC = 0x32 → PN532, firmware 1.6). Si no llega nada: revisar que las llaves del módulo estén en <b>HSU</b>
+(SEL0 = 0, SEL1 = 0 en la mayoría de los módulos) y que TX del micro vaya a RX del módulo.</p>
+
+<h3>5.7 ESP8266 / ESP-01</h3>
+<p>Solo está configurada la UART (USART2, 115200, líneas terminadas en CR+LF). <b>Los comandos AT y la conexión con la PC están PENDIENTES.</b>
+La tecla <code>#</code> manda <code>AT\r\n</code>; tiene que volver <code>OK</code> (se ve en la PC como <code>WIFI&lt; OK</code>).</p>
+<div class="caja warn">El ESP-01 es de <b>3,3 V</b> y en los picos de transmisión consume hasta ~300 mA: no alimentarlo de 5 V ni del regulador chico de la BRK
+sin verificar. CH_PD (EN) tiene que estar en 3,3 V. Algunos ESP-01 vienen a 9600 o 74880 baudios: si no responde, probar cambiando
+<code>WIFI_BAUDIOS</code>.</div>
+
+<h3>5.8 I2C1 + DS3231 (periférico no visto en la cursada)</h3>
+<p><code>13-i2c</code> es un driver I2C maestro <b>no bloqueante</b> escrito para el SCAI (el <code>LPC845.h</code> de la cátedra no traía los registros del I2C;
+se definieron en <code>i2c.h</code> según el manual UM11029). Clock: FRO 12 MHz / 15 = 800 kHz y 8 clocks por bit → <b>100 kHz</b>.</p>
+<p><code>Transferir(dir, tx, ntx, rx, nrx)</code> arranca una transacción y <code>Run()</code> la avanza <b>un paso por llamada</b>, mirando el bit
+<code>MSTPENDING</code>. Pasos: dirección+W → escribir bytes → START repetido → dirección+R → leer bytes → STOP. Si el esclavo no responde (NACK)
+termina en <code>ERROR</code>.</p>
+<p><code>14-rtc</code> usa ese driver para el DS3231 (dirección 0x68): <code>PedirLectura()</code> lee los registros 0x00..0x06 (en BCD) y los convierte;
+<code>PedirEscritura()</code> escribe los 7 de una sola vez. En <code>main.cpp</code> un timer pide la hora cada 1 s.</p>
+<p><b>Para mirar:</b> sin el módulo conectado, el LCD muestra "RTC sin respuesta" (es lo esperado). Con el módulo: mandar
+<code>$TIME,26/11/2026,18:30:00</code> desde la terminal y ver que la hora avanza en el LCD. Desenchufar la placa, volver a enchufar: la hora tiene que seguir bien
+(eso confirma la pila del módulo).</p>
+
+<h3>5.9 Servo SG90 con SCTimer (periférico no visto en la cursada)</h3>
+<p>El SCT se configura como un contador único de 32 bits a 1 MHz (FRO 12 MHz / 12), así una cuenta = 1 µs.</p>
+<ul>
+  <li><b>Evento 0</b>: la cuenta llega a MATCH0 = 19999 (fin de período, 20 ms = 50 Hz) → reinicia la cuenta y pone la salida en 1.</li>
+  <li><b>Evento 1</b>: la cuenta llega a MATCH1 = ancho del pulso → pone la salida en 0.</li>
+</ul>
+<p>Mover el servo es solo cambiar <code>MATCHREL1</code>: el SCT lo copia al empezar el período siguiente, así nunca sale un pulso cortado. No hay
+interrupciones ni trabajo de la CPU. <code>Servo-&gt;Angulo(0..180)</code> mapea linealmente a 1000..2000 µs.</p>
+<p><b>Para mirar:</b> con osciloscopio en P1_3 tiene que verse 50 Hz y un pulso de 1 ms (0°) a 2 ms (180°). Muchos SG90 necesitan 0,5..2,4 ms para recorrer
+los 180°: ajustar <code>SERVO_PULSO_MIN_US</code> y <code>SERVO_PULSO_MAX_US</code> en <code>servo.h</code>. El servo se alimenta de 5 V aparte, con GND común.
+Ojo: se asume que la fuente del SCT con <code>SCTCLKSEL = 0</code> es el FRO de 12 MHz; si la frecuencia medida no es 50 Hz, revisar eso primero.</p>
+
+<h3>5.10 Reed switch con PINT</h3>
+<p>El pin tiene pull-up: con el imán cerca (puerta cerrada) el contacto cierra a GND → 0; puerta abierta → 1. El PINT canal 0 interrumpe en
+<b>ambos flancos</b>. La ISR solo borra el flag y recarga una cuenta de 30 ms; el SysTick la descuenta y, cuando pasan 30 ms sin flancos
+(se terminaron los rebotes), lee el pin y, si cambio, levanta <code>HuboCambio()</code>.</p>
+<p><b>Para mirar:</b> acercar y alejar el imán: el LCD tiene que alternar "Puerta CERRADA" / "Puerta ABIERTA" una sola vez por movimiento.
+Si se invierte, el MC-38 es del tipo normal cerrado: invertir la lógica en <code>reed.cpp</code>.</p>
+
+<h3>5.11 Buzzer</h3>
+<p>Clase nueva <code>buzzer</code>: patrones manejados por el SysTick, sin bloquear. Se asume buzzer <b>activo</b> (suena con solo darle tensión),
+así que no se puede cambiar el tono y se distingue por patron: aceptado = 1 pitido de 300 ms, rechazado = 3 de 80 ms, alarma = continuo.</p>
+<p class="t-mal">Pendiente: el pin real y si es activo o pasivo (esquemático de la Infotrónic). Si es pasivo hay que generar la frecuencia con otra salida del SCT.</p>
+
+<!-- ================================================================================================ -->
+<h2 class="salto">6. Cambios hechos a la librería de la cátedra</h2>
+<p>Cada cambio está marcado en el código con un comentario <code>SCAI 26/11/2026</code>. Conviene poder explicarlos en el coloquio.</p>
+<table>
+  <tr><th style="width:24%">Archivo</th><th>Cambio</th><th>Por qué</th></tr>
+  <tr><td><code>12-USART/uart.cpp</code></td><td>Clock de las UART por FRG0 y BRG redondeado</td><td>Con la fórmula original 115200 daba 125000 baudios (8,5 % de error)</td></tr>
+  <tr><td><code>12-USART/uart.cpp</code></td><td>Colas de TX y RX de 128 bytes</td><td>Las tramas <code>$EVT</code> y las respuestas del ESP8266 no entraban</td></tr>
+  <tr><td><code>02-gpio/gpio.cpp</code></td><td><code>SetTogglePin()</code> implementado con el registro <code>NOT</code></td><td>Estaba vacio (devolvía 1 y no hacía nada)</td></tr>
+  <tr><td><code>02-gpio/gpio.cpp</code></td><td>Tabla de IOCON: PIO0_8 = 14, PIO0_29 = 50, PIO0_30 = 51, PIO1_2 = 38</td><td>Apuntaban a otros pines (PIO1_2 apuntaba al de RESET). Verificar con la tabla de IOCON del UM11029</td></tr>
+  <tr><td><code>02-gpio/gpio.cpp</code></td><td>Tablas de IOCON declaradas <code>extern</code></td><td>En C++ un <code>const</code> global es privado del archivo y el driver I2C las necesita</td></tr>
+  <tr><td><code>aplicacion/inicializarInfotronic.*</code></td><td>Reescrito para el SCAI</td><td>Se sacaron display 7 seg, teclado 2x3, ADC y UART4; se agregaron los periféricos nuevos</td></tr>
+  <tr><td><code>.cproject</code></td><td>Rutas de include de <code>13-i2c</code> a <code>17-buzzer</code></td><td>Sin eso el IDE no encuentra los <code>.h</code> nuevos</td></tr>
+</table>
+
+<!-- ================================================================================================ -->
+<h2>7. Procedimiento de prueba (cuando lleguen los componentes)</h2>
+<p>Con <code>PRUEBA_PERIFERICOS = 1</code> en <code>main.cpp</code>. Abrir una terminal serie (la de MCUXpresso, PuTTY o la app Qt) en el puerto VCOM de la BRK,
+<b>115200 8N1</b>. Conectar <b>de a un módulo</b> y tildar:</p>
+<table class="chk">
+  <tr><th></th><th style="width:22%">Qué</th><th>Cómo</th><th style="width:32%">Resultado esperado</th></tr>
+  <tr><td>☐</td><td>Clock</td><td>Contar los destellos del LED azul durante 60 s</td><td>60 destellos (48 → el clock es 24 MHz)</td></tr>
+  <tr><td>☐</td><td>UART PC</td><td>Resetear la placa</td><td>En la terminal: <code>SCAI - prueba de perifericos</code></td></tr>
+  <tr><td>☐</td><td>LCD</td><td>Resetear</td><td>"SCAI prueba / perifericos"</td></tr>
+  <tr><td>☐</td><td>Teclado</td><td>Apretar las 16 teclas</td><td>LCD "Tecla: x" y en la PC <code>TEC x</code> con la tecla correcta</td></tr>
+  <tr><td>☐</td><td>Servo</td><td>Teclas A y B</td><td>A: gira a 90°. B: vuelve a 0°</td></tr>
+  <tr><td>☐</td><td>LEDs + buzzer</td><td>Teclas A, C y D</td><td>A: verde + 1 pitido. C: rojo + 3 pitidos. D: apaga</td></tr>
+  <tr><td>☐</td><td>Reed</td><td>Acercar y alejar el imán</td><td>"Puerta CERRADA" / "Puerta ABIERTA", una vez por movimiento</td></tr>
+  <tr><td>☐</td><td>DS3231</td><td>Mandar <code>$TIME,26/11/2026,18:30:00</code></td><td><code>$ACK,TIME</code> y la hora corre en la fila 1</td></tr>
+  <tr><td>☐</td><td>DS3231 (pila)</td><td>Desenchufar 1 minuto y volver a enchufar</td><td>La hora sigue correcta</td></tr>
+  <tr><td>☐</td><td>PN532</td><td>Tecla <code>*</code></td><td><code>NFC&lt; 00 00 FF 00 FF 00 ...</code> y luego <code>... D5 03 32 01 06 07 ...</code></td></tr>
+  <tr><td>☐</td><td>ESP8266</td><td>Tecla <code>#</code></td><td><code>WIFI&lt; AT</code> (eco) y <code>WIFI&lt; OK</code></td></tr>
+</table>
+
+<!-- ================================================================================================ -->
+<h2>8. Riesgos y problemas conocidos</h2>
+<ul>
+  <li><b>Clock 24 vs 30 MHz</b> (ver 5.1). Es lo primero que hay que medir: afecta todos los tiempos.</li>
+  <li><b>Pinout sin verificar</b> (ver sección 4). Pin del buzzer = marcador.</li>
+  <li><b>Fuente del SCT</b>: se asume que <code>SCTCLKSEL = 0</code> es el FRO de 12 MHz. Medir 50 Hz.</li>
+  <li><b>LCD y la lista del SysTick</b> (heredado de la cátedra): el constructor de <code>Lcd</code> se agrega a <code>g_CallbackList</code> con el SysTick andando.
+      Si la ISR justo recorre la lista en ese instante, puede leer un nodo a medio enlazar. Es muy poco probable, pero existe.</li>
+  <li><b><code>uart::Receive(buffer, n)</code></b> (cátedra): cuando hay una línea completa, saca hasta <code>n-1</code> bytes aunque haya más de una línea en la cola,
+      así que dos líneas muy seguidas pueden salir pegadas. Para el parser de la PC conviene leer de a byte y cortar en <code>\n</code>.</li>
+  <li><b>Flash</b>: 44 KB de 64 KB usados. Una parte grande es de <code>std::list</code>, <code>std::vector</code> y <code>new</code> (malloc, manejo de excepciones de libstdc++).
+      No usar <code>printf</code>/<code>sprintf</code> (suman varios KB). Medir el tamaño en cada etapa.</li>
+  <li><b>Memoria dinámica</b>: se usa solo en la inicialización. No llamar <code>new</code> ni hacer <code>push_back</code> dentro del <code>while(1)</code>.</li>
+  <li><b>Google Drive + IDE + git</b> (ver sección 1).</li>
+  <li>El <b>display de 7 segmentos</b> de la Infotrónic puede mostrar basura porque sus líneas se usan para el teclado.</li>
+</ul>
+
+<!-- ================================================================================================ -->
+<h2>9. Qué falta</h2>
+<p>En el orden en que conviene hacerlo:</p>
+<ol>
+  <li><b>Verificar el hardware</b>: esquemáticos (pinout y buzzer), medir el clock, correr la prueba de la sección 7.</li>
+  <li><b>Definir la máquina de estados de la puerta</b> (decisión del grupo; la sección 5 del CLAUDE.md es la propuesta original).</li>
+  <li><b>PN532</b>: máquina de estados no bloqueante enviar → ACK → respuesta → timeout, con <code>SAMConfiguration (0x14)</code> e
+      <code>InListPassiveTarget (0x4A)</code> para leer el UID.</li>
+  <li><b>ESP8266</b>: secuencia AT (modo estación, conexión a la red, socket TCP o UDP con la PC) como máquina de estados, y definir cómo la app Qt se conecta.</li>
+  <li><b>Parser de la PC</b>: <code>$TIME</code>, <code>$ADD</code>, <code>$DEL</code>, <code>$LIST</code>, <code>$OPEN</code>, <code>$RST</code>, <code>$CFG</code> con <code>$ACK</code>/<code>$NAK</code>,
+      igual por USB y por WiFi.</li>
+  <li><b>Tabla de usuarios</b> y validaciones (nivel, sector como flags de bits, horario, antipassback, habilitado).</li>
+  <li><b>Flags y alarmas</b>: llegada tarde, 3 intentos fallidos → bloqueo, puerta forzada, puerta abierta demasiado tiempo.</li>
+  <li><b>Modo administrador</b> por teclado (PIN de 4 dígitos, alta rápida de tarjeta).</li>
+  <li>DS3231: revisar el bit <b>OSF</b> (registro 0x0F) al arrancar para saber si la hora se perdio y pedirla a la PC.</li>
+  <li>Decisiones abiertas: huella AS608, persistencia (IAP o recarga desde la PC), una o varias puertas, template de la cátedra.</li>
+  <li>Cuando exista la MdE: <code>PRUEBA_PERIFERICOS = 0</code> y, si se quiere, borrar <code>prueba_perifericos.*</code>.</li>
+</ol>
+
+<!-- ================================================================================================ -->
+<h2>10. Preguntas probables del coloquio</h2>
+<table>
+  <tr><th style="width:42%">Pregunta</th><th>Respuesta corta</th></tr>
+  <tr><td>¿Por qué la ISR del SysTick no ejecuta los handlers de los timers?</td><td>Para que la ISR sea corta. Solo marca "vencido"; el handler corre en el main loop vía <code>Timers.TmrEvent()</code>.</td></tr>
+  <tr><td>¿Por qué los timers se crean dentro de <code>main()</code>?</td><td>Se enganchan a <code>g_CallbackList</code>, que vive en otro archivo: C++ no garantiza el orden de construcción entre archivos. Y se crean antes de arrancar el SysTick para que la ISR no recorra la lista mientras cambia.</td></tr>
+  <tr><td>¿Cómo se llega a 115200 baudios?</td><td>Con el generador fraccional FRG0: 12 MHz / (1 + 22/256) ≈ 11,05 MHz = 6 × 16 × 115200.</td></tr>
+  <tr><td>¿Cómo genera el PWM el SCT?</td><td>Contador a 1 MHz; MATCH0 = 20 ms pone la salida en 1 y reinicia; MATCH1 = ancho de pulso la pone en 0. Se cambia el angulo escribiendo MATCHREL1.</td></tr>
+  <tr><td>¿Por qué el I2C no bloquea?</td><td><code>Run()</code> avanza un paso solo si el hardware terminó el anterior (MSTPENDING). Si no, vuelve enseguida.</td></tr>
+  <tr><td>¿Cómo se evita el rebote del reed?</td><td>Cada flanco recarga una cuenta de 30 ms; recién cuando pasan 30 ms sin flancos se lee el pin.</td></tr>
+  <tr><td>¿Para que sirve la Switch Matrix?</td><td>Para sacar las funciones movibles (UART, I2C1-3, SCT) por el pin que uno elija.</td></tr>
+</table>
+
+</body>
+</html>
